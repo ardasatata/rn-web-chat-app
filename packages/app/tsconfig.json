@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": [
+    "src/typings", "src",
+    "src/query", ".", "./"],
+  "exclude": ["node_modules"],
+}
