@@ -64,6 +64,27 @@ export function Button(props: ButtonProps) {
     )
   }
 
+  if (type === "send") {
+    return (
+      <TouchableOpacity
+        style={[
+          {
+            backgroundColor: color.primary900,
+            borderRadius: roundness.full,
+            justifyContent: 'center',
+            minHeight: spacing.extraLarge3,
+            minWidth: spacing.huge,
+            alignItems: 'center',
+          },
+          styleOverride,
+        ]}
+        {...rest}
+      >
+        <Text type={"button"} tx={tx} text={text} style={[{fontSize: spacing.extraMedium, color: color.white},textStyleOverride]} />
+      </TouchableOpacity>
+    )
+  }
+
   return (
     <TouchableOpacity style={viewStyles} {...rest}>
       {content}

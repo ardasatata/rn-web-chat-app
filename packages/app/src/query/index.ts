@@ -63,7 +63,7 @@ export const GET_ANIME_DETAIL = gql`
 `;
 
 export const FETCH_LATEST_MESSAGE = gql`
-  query fetchLatestMessages($channelId: String!){
+  query FetchLatestMessages($channelId: String!){
     fetchLatestMessages(channelId: $channelId){
       messageId
       text
@@ -84,13 +84,13 @@ export const POST_MESSAGE = gql`
   }
 `;
 
-// export const POST_MESSAGE = gql`
-//   mutation PostMessage($channelId: String!, $text: String!, $userId: Sam!){
-//     postMessage(channelId: $channelId", text: $text, userId: $userId){
-//       messageId
-//       text
-//       datetime
-//       userId
-//     }
-//   }
-// `;
+export const FETCH_MORE_MESSAGE = gql`
+  query FetchMoreMessage($channelId: String!, $messageId: String!, $old: Boolean!){
+    fetchMoreMessages(channelId: $channelId, messageId: $messageId, old: $old) {
+      messageId
+      text
+      datetime
+      userId
+    }
+}
+`;

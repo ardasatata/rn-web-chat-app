@@ -1,11 +1,13 @@
 /* eslint-disable react-native/no-inline-styles */
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useContext, useEffect, useState} from 'react';
 import {useQuery, useMutation, ApolloError} from '@apollo/react-hooks';
 import {
+  Dimensions,
   FlatList, Image,
   StyleSheet, TextInput,
   TouchableOpacity,
-  View
+  View,
+  KeyboardAvoidingView, Platform
 } from 'react-native';
 import {FETCH_LATEST_MESSAGE, GET_ANIME_LIST, POST_MESSAGE} from "../query";
 import {isDesc, logger} from "../utils"
@@ -22,58 +24,157 @@ import {Spacer} from "../components/spacer";
 import {AscDescSort} from "../components/asc-desc-sort";
 import {Button} from "../components/button/button";
 
+import {createDrawerNavigator, DrawerContentScrollView, DrawerItem} from '@react-navigation/drawer';
+import useChatApp, {UserType} from "../hooks/useChatApp";
+import {toReadableDate} from "../utils/date";
+
+import KeyboardStickyView from 'rn-keyboard-sticky-view';
+
+const Drawer = createDrawerNavigator();
+
 const log = logger().child({module: "ChannelDetails"})
 
 const PER_PAGE = 10
 
+function DrawerNavigator({navigation, route}) {
+
+  const {
+    text,
+    messages,
+    setText,
+    error,
+    sendMessage,
+    loading,
+    fetchMoreMessage,
+    activeUser,
+    setActiveUser
+  } = useChatApp()
+
+  function CustomDrawerContent(props) {
+
+    const selectActiveUser = (userId: UserType) => {
+      setActiveUser(userId)
+      props.navigation.closeDrawer()
+    }
+
+    return (
+      <DrawerContentScrollView {...props}>
+        <DrawerItem label="Sam" onPress={()=> selectActiveUser("Sam")}  />
+        <DrawerItem label="Russell" onPress={()=> selectActiveUser("Russell")}  />
+        <DrawerItem label="Joyse" onPress={()=> selectActiveUser("Joyse")}  />
+      </DrawerContentScrollView>
+    );
+  }
+
+  return (
+    <Drawer.Navigator
+      drawerContent={(props) => <CustomDrawerContent {...props} />}>
+      <Drawer.Screen name="Chats" >
+        {props => {
+          return (
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              style={{flex: 1}}
+            >
+              <VStack bottom={spacing["96"]} style={{backgroundColor: color.dark100}}>
+                {messages ? (
+                  messages.length !== 0 ? (
+                    <FlatList
+                      inverted
+                      onEndReached={()=> fetchMoreMessage()}
+                      contentContainerStyle={{}}
+                      data={messages}
+                      // keyExtractor={(item) => String(item.messageId)}
+                      renderItem={({item}) => (
+                        <TouchableOpacity>
+                          <VStack horizontal={spacing.small} vertical={spacing.small}>
+                            <VStack>
+                              <HStack>
+                                { item.userId === activeUser ? <Spacer/> : null }
+                                <VStack>
+                                  { item.userId === activeUser ? null : <Text type={'label-bold'} style={{color: color.dark900}}>{item.userId}</Text> }
+                                  {/*<Text type={'label-bold'} style={{color: color.dark900}}>{item.userId}</Text>*/}
+                                </VStack>
+                              </HStack>
+                              <HStack>
+                                { item.userId === activeUser ? <Spacer/> : null }
+                                <VStack horizontal={spacing.small}
+                                        vertical={spacing.small}
+                                        style={{backgroundColor: color.primary300, borderRadius: roundness.lg,
+                                          maxWidth: Dimensions.get("window").width * 0.65}}>
+                                  <VStack style={{flex: 1}} >
+                                    <Text type={'body'} style={{color: color.dark900}}>{item.text}</Text>
+                                  </VStack>
+                                </VStack>
+                              </HStack>
+                              <HStack>
+                                { item.userId === activeUser ? <Spacer/> : null }
+                                <VStack>
+                                  <Spacer height={spacing.nano} />
+                                  <Text numberOfLines={1} type={'label'} style={{color: color.dark900}}>{toReadableDate(item.datetime)}</Text>
+                                </VStack>
+                              </HStack>
+                            </VStack>
+                          </VStack>
+                        </TouchableOpacity>
+                      )}
+                      ListFooterComponent={() => (
+                        <>
+                          {loading ? <Spinner/> : null}
+                        </>
+                      )}
+                      // ListFooterComponent={
+                      //
+                      // }
+                      // ListHeaderComponent={()=> (
+                      //   <HStack horizontal={spacing.medium} bottom={spacing.small}>
+                      //     <AscDescSort isDesc={isSortDesc} onTogglePress={setIsSortDesc} />
+                      //   </HStack>
+                      // )}
+                    />
+                  ) : (
+                    <CenterText text={"No Data Found :("}/>
+                  )
+                ) : (
+                  <View style={styles.loadContainer}>
+                    <Spinner/>
+                  </View>
+                )}
+              </VStack>
+              <KeyboardStickyView>
+                <HStack style={{backgroundColor: color.offWhite, borderRadius: roundness.medium}} horizontal={spacing.large} bottom={spacing.large} vertical={spacing.medium}>
+                  <HStack style={{backgroundColor: color.offWhite, borderRadius: spacing.large, minHeight: spacing.extraLarge3}} >
+                    <TextInput
+                      multiline
+                      value={text}
+                      onChangeText={(value => setText(value))} placeholder={"type message here"}
+                      style={{fontSize: spacing[16], flex: 1, backgroundColor: color.offWhite, height: '100%'}}/>
+                    <Button type={"send"} text={"Send"} onPress={() => {
+                      sendMessage()
+                    }}/>
+                  </HStack>
+                </HStack>
+              </KeyboardStickyView>
+            </KeyboardAvoidingView>
+          )
+        }}
+      </Drawer.Screen>
+    </Drawer.Navigator>
+  );
+}
+
 const ChannelDetails = ({navigation}: any) => {
 
-  const [messages, setMessages] = useState<Array<any>>(null)
-  const [text, setText] = useState<string>('your');
-
-  const {loading, error, data, refetch} = useQuery(FETCH_LATEST_MESSAGE, {
-    variables: {
-      channelId: "1"
-    },
-    pollInterval: 500
-  });
-
-  const [postMessage, {
-    loading: postLoading, error: postError, data: postData
-  }] = useMutation(POST_MESSAGE, {
-    variables: {
-      channelId: "1",
-      text: text,
-      userId: "Sam"
-    },
-  });
-
-  const sendMessage = useCallback(() => {
-    postMessage().then((r)=> {
-      log.info(r)
-      refetch()
-    }).catch((error => {
-      log.info(error)
-      setText("")
-    }))
-  }, [])
-
-  // useEffect(() => {
-  //   log.info(error)
-  // }, [error]);
-  //
-  // const onLoadMore = useCallback(() => {
-  //   // !loading && setPage(page + 1)
-  //   // log.info(page)
-  // }, [page, loading])
-
-  useEffect(() => {
-    log.info(error)
-    if(error === undefined && !loading){
-      log.info(data.fetchLatestMessages)
-      setMessages(data.fetchLatestMessages);
-    }
-  }, [data,error, loading]);
+  const {
+    text,
+    messages,
+    setText,
+    error,
+    sendMessage,
+    loading,
+    fetchMoreMessage,
+    activeUser
+  } = useChatApp()
 
   if (loading) {
     return (
@@ -88,61 +189,90 @@ const ChannelDetails = ({navigation}: any) => {
   }
 
   return (
-    <View style={{flex: 1}}>
-      {messages ? (
-        messages.length !== 0 ? (
-          <FlatList
-            inverted
-            onEndReached={()=> log.info("end reached")}
-            contentContainerStyle={{}}
-            data={messages}
-            // keyExtractor={(item) => String(item.messageId)}
-            renderItem={({item}) => (
-              <TouchableOpacity onPress={() => navigation.navigate('Detail', {
-                id: item.messageId
-              })}>
-                <HStack left={spacing.medium} vertical={spacing.small}>
-                  {/*<Image source={{uri: item.coverImage.large}} style={{*/}
-                  {/*  height: spacing[72],*/}
-                  {/*  width: spacing[72],*/}
-                  {/*}}/>*/}
-                  <VStack left={spacing.medium}>
-                    <Text numberOfLines={1} type={'body'} style={{color: color.dark900}}>{item.text}</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{flex: 1}}
+    >
+      <VStack bottom={spacing["96"]} style={{backgroundColor: color.dark100}}>
+        {messages ? (
+          messages.length !== 0 ? (
+            <FlatList
+              inverted
+              onEndReached={()=> fetchMoreMessage()}
+              contentContainerStyle={{}}
+              data={messages}
+              // keyExtractor={(item) => String(item.messageId)}
+              renderItem={({item}) => (
+                <TouchableOpacity>
+                  <VStack horizontal={spacing.small} vertical={spacing.small}>
+                    <VStack>
+                      <HStack>
+                        {/*{ item.userId === activeUser ? <Spacer/> : null }*/}
+                        <VStack>
+                          { item.userId === activeUser ? null : <Text type={'label-bold'} style={{color: color.dark900}}>{item.userId}</Text> }
+                          <Text type={'label-bold'} style={{color: color.dark900}}>{item.userId}</Text>
+                        </VStack>
+                      </HStack>
+                      <HStack>
+                        {/*{ item.userId === activeUser ? <Spacer/> : null }*/}
+                        <VStack horizontal={spacing.small}
+                                vertical={spacing.small}
+                                style={{backgroundColor: color.primary300, borderRadius: roundness.lg,
+                                  maxWidth: Dimensions.get("window").width * 0.65}}>
+                          <VStack style={{flex: 1}} >
+                            <Text type={'body'} style={{color: color.dark900}}>{item.text}</Text>
+                          </VStack>
+                        </VStack>
+                      </HStack>
+                      <HStack>
+                        {/*{ item.userId === activeUser ? <Spacer/> : null }*/}
+                        <VStack>
+                          <Spacer height={spacing.nano} />
+                          <Text numberOfLines={1} type={'label'} style={{color: color.dark900}}>{toReadableDate(item.datetime)}</Text>
+                        </VStack>
+                      </HStack>
+                    </VStack>
                   </VStack>
-                </HStack>
-              </TouchableOpacity>
-            )}
-            // ListFooterComponent={() => (
-            //   <>
-            //     {loading ? <Spinner/> : null}
-            //
-            //   </>
-            // )}
-            ListFooterComponent={<VStack horizontal={spacing.medium} vertical={spacing.medium} style={[]}>
-              <HStack style={{backgroundColor: color.offWhite, borderRadius: roundness.medium}} horizontal={spacing.medium}>
-                <Spacer width={spacing.medium}/>
-                <TextInput
-                  value={text}
-                  onChangeText={(value => setText(value))} placeholder={"type message here"}
-                  style={{height: spacing.extraLarge2, fontSize: spacing[16], flex: 1}}/>
-                <Button type={"primary"} text={"Send"} onPress={sendMessage}/>
-              </HStack>
-            </VStack>}
-            // ListHeaderComponent={()=> (
-            //   <HStack horizontal={spacing.medium} bottom={spacing.small}>
-            //     <AscDescSort isDesc={isSortDesc} onTogglePress={setIsSortDesc} />
-            //   </HStack>
-            // )}
-          />
+                </TouchableOpacity>
+              )}
+              ListFooterComponent={() => (
+                <>
+                  {loading ? <Spinner/> : null}
+                </>
+              )}
+              // ListFooterComponent={
+              //
+              // }
+              // ListHeaderComponent={()=> (
+              //   <HStack horizontal={spacing.medium} bottom={spacing.small}>
+              //     <AscDescSort isDesc={isSortDesc} onTogglePress={setIsSortDesc} />
+              //   </HStack>
+              // )}
+            />
+          ) : (
+            <CenterText text={"No Data Found :("}/>
+          )
         ) : (
-          <CenterText text={"No Data Found :("}/>
-        )
-      ) : (
-        <View style={styles.loadContainer}>
-          <Spinner/>
-        </View>
-      )}
-    </View>
+          <View style={styles.loadContainer}>
+            <Spinner/>
+          </View>
+        )}
+      </VStack>
+      <KeyboardStickyView>
+        <HStack style={{backgroundColor: color.offWhite, borderRadius: roundness.medium}} horizontal={spacing.large} bottom={spacing.large} vertical={spacing.medium}>
+          <HStack style={{backgroundColor: color.offWhite, borderRadius: spacing.large, minHeight: spacing.extraLarge3}} >
+            <TextInput
+              multiline
+              value={text}
+              onChangeText={(value => setText(value))} placeholder={"type message here"}
+              style={{fontSize: spacing[16], flex: 1, backgroundColor: color.offWhite, height: '100%'}}/>
+            <Button type={"send"} text={"Send"} onPress={() => {
+              sendMessage()
+            }}/>
+          </HStack>
+        </HStack>
+      </KeyboardStickyView>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -158,4 +288,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
-export default ChannelDetails;
+export default DrawerNavigator;

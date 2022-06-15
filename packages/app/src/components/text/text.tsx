@@ -61,6 +61,24 @@ export function Text(props: TextProps) {
     )
   }
 
+  if (props.type === "label") {
+    return (
+      <ReactNativeText
+        {...rest}
+        style={[
+          style,
+          {
+            fontSize: spacing[12],
+            fontWeight: 'bold'
+          },
+          styleOverride,
+        ]}
+      >
+        {content}
+      </ReactNativeText>
+    )
+  }
+
   return (
     <ReactNativeText {...rest} style={styles}>
       {content}

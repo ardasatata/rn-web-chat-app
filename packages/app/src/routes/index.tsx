@@ -11,7 +11,7 @@ const Navigator = () => (
   <NavigationContainer>
     <StackNav.Navigator initialRouteName="Anime List">
       <StackNav.Screen
-        //   options={{headerShown: false}}
+        options={{headerShown: false}}
         name="Channel Details"
         component={ChannelDetails}
       />
@@ -20,11 +20,11 @@ const Navigator = () => (
       {/*  name="Anime List"*/}
       {/*  component={AnimeList}*/}
       {/*/>*/}
-      <StackNav.Screen
-        options={{headerShown: false}}
-        name="Detail"
-        component={Information}
-      />
+      {/*<StackNav.Screen*/}
+      {/*  options={{headerShown: false}}*/}
+      {/*  name="Detail"*/}
+      {/*  component={Information}*/}
+      {/*/>*/}
     </StackNav.Navigator>
   </NavigationContainer>
 );
