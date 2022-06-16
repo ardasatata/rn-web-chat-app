@@ -23,6 +23,12 @@ import {toReadableDate} from "../utils/date";
 import KeyboardStickyView from 'rn-keyboard-sticky-view';
 import {ChatContext} from "../hooks/ChatContextProvider";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import ColorHash from 'color-hash'
+
+const colorHash = new ColorHash();
+
 const ChannelDetails = ({}) => {
   const {
     text,
@@ -45,18 +51,12 @@ const ChannelDetails = ({}) => {
     );
   }
 
-  // if (error) {
-  //   return (
-  //     <CenterText text={"Something wrong :("}/>
-  //   );
-  // }
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{flex: 1}}
     >
-      <VStack bottom={spacing["96"]} style={{backgroundColor: color.dark100}}>
+      <VStack bottom={spacing["96"]} style={styles.container}>
         {messages ? (
           messages.length !== 0 ? (
             <FlatList
@@ -89,23 +89,28 @@ const ChannelDetails = ({}) => {
                                 { item.userId === activeUser ? null :
                                   <HStack style={{width: spacing['32']}}>
                                     <Image
-                                      source={{uri: `https://ui-avatars.com/api/?name=${item.userId}&background=0D8ABC&color=fff`}}
+                                      source={{uri: `https://ui-avatars.com/api/?name=${item.userId}&background=${colorHash.hex(item.userId).substring(1)}&color=fff`}}
                                       style={{ height: spacing['32'], width: spacing['32'], borderRadius: roundness.full}}
                                     />
                                   </HStack>
                                 }
                                 <Spacer width={spacing.small}/>
-                                <VStack horizontal={spacing.small}
-                                        vertical={spacing.small}
-                                        style={{
-                                          backgroundColor: item.datetime !== '' ? color.primary300 : color.secondary500,
-                                          borderRadius: roundness.lg,
-                                          maxWidth: Dimensions.get("window").width * 0.65
-                                        }}>
+                                <VStack
+                                  horizontal={spacing.small}
+                                  vertical={spacing.small}
+                                  style={{
+                                    backgroundColor: item.datetime !== '' ? color.primary300 : color.secondary500,
+                                    borderRadius: roundness.lg,
+                                    maxWidth: Dimensions.get("window").width * 0.65
+                                  }}>
                                   <VStack style={{flex: 1}} >
                                     <Text type={'body'} style={{color: color.dark900}}>{item.text}</Text>
                                   </VStack>
                                 </VStack>
+                              </HStack>
+                              <HStack top={spacing.tiny}>
+                                <Spacer/>
+                                { item.datetime !== "" ? null : <Text type={'label-bold'} style={{color: color.dark900}}>{"Unsent"}</Text> }
                               </HStack>
                               <HStack>
                                 { item.userId === activeUser ? <Spacer/> : null }
@@ -131,14 +136,6 @@ const ChannelDetails = ({}) => {
                   {loading ? <Spinner/> : null}
                 </>
               )}
-              // ListFooterComponent={
-              //
-              // }
-              // ListHeaderComponent={()=> (
-              //   <HStack horizontal={spacing.medium} bottom={spacing.small}>
-              //     <AscDescSort isDesc={isSortDesc} onTogglePress={setIsSortDesc} />
-              //   </HStack>
-              // )}
             />
           ) : (
             <CenterText text={"No Data Found :("}/>
@@ -150,14 +147,14 @@ const ChannelDetails = ({}) => {
         )}
       </VStack>
       <KeyboardStickyView>
-        <HStack style={{backgroundColor: color.offWhite, borderRadius: roundness.medium}} horizontal={spacing.large} bottom={spacing.large} vertical={spacing.medium}>
-          <HStack style={{backgroundColor: color.offWhite, borderRadius: spacing.large, minHeight: spacing.extraLarge3}} >
+        <HStack style={styles.bottomContainer} horizontal={spacing.large} bottom={spacing.large} vertical={spacing.medium}>
+          <HStack style={styles.bottomInputContainer} >
             <TextInput
               multiline
               value={text}
-              onChangeText={(value => setText(value))} placeholder={"type message here"}
-              style={{fontSize: spacing[16], flex: 1, backgroundColor: color.offWhite, height: '100%'}}/>
-            <Button type={"send"} text={"Send"} onPress={() => {
+              onChangeText={(value => setText(value))} placeholder={"Type your message here..."}
+              style={styles.bottomInputStyle}/>
+            <Button disabled={text===""} type={text === "" ? "send-disabled" : "send"} text={"Send"} onPress={() => {
               sendMessage()
             }}/>
           </HStack>
@@ -168,10 +165,10 @@ const ChannelDetails = ({}) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'white',
-  },
+  bottomContainer: {backgroundColor: color.offWhite, borderRadius: roundness.medium},
+  bottomInputContainer: {backgroundColor: color.offWhite, borderRadius: spacing.large, minHeight: spacing.extraLarge3},
+  bottomInputStyle: {fontSize: spacing[16], flex: 1, backgroundColor: color.offWhite, height: '100%'},
+  container: { backgroundColor: color.dark100 },
   loadContainer: {
     flex: 1,
     padding: 22,

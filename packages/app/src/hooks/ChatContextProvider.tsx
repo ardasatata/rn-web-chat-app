@@ -3,16 +3,12 @@ import {GlobalChatContext} from "./GlobalChatContext";
 import {useCallback, useEffect, useMemo, useState} from "react";
 import {useLazyQuery, useMutation, useQuery} from "@apollo/react-hooks";
 import {FETCH_LATEST_MESSAGE, FETCH_MORE_MESSAGE, POST_MESSAGE} from "../query";
-import {logger} from "../utils";
+import {logger, timeout} from "../utils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {ErrorsType} from "../Errors";
 import {MessageItemType, ChannelIdType, UserType} from "../type/chat";
 
 const log = logger().child({module: "ChatContextProvider"})
-
-function timeout(delay: number) {
-  return new Promise( res => setTimeout(res, delay) );
-}
 
 const defaultUnsentMessages = [
   {
@@ -51,7 +47,7 @@ export const ChatContextProvider:React.FC = ({children}) => {
   const [error, setError] = useState<ErrorsType | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const [ fetchInitialData, {loading: initialLoading, error: initialError}] = useLazyQuery(FETCH_LATEST_MESSAGE, {
+  const [ fetchInitialData, {loading: initialLoading}] = useLazyQuery(FETCH_LATEST_MESSAGE, {
     variables: {
       channelId: channelId
     },
@@ -72,7 +68,7 @@ export const ChatContextProvider:React.FC = ({children}) => {
   },[channelId])
 
   const [postMessage, {
-    loading: postMessageLoading, error: postMessageError, data: postMessageData
+    loading: postMessageLoading,
   }] = useMutation(POST_MESSAGE, {
     variables: {
       channelId: channelId,
@@ -81,7 +77,7 @@ export const ChatContextProvider:React.FC = ({children}) => {
     },
   });
 
-  const [queryMoreMessage, {loading: fetchMoreLoading, error: fetchMoreError, data: fetchMoreData}] = useLazyQuery(FETCH_MORE_MESSAGE, {
+  const [queryMoreMessage] = useLazyQuery(FETCH_MORE_MESSAGE, {
     fetchPolicy: 'network-only',
   });
 
@@ -99,8 +95,6 @@ export const ChatContextProvider:React.FC = ({children}) => {
           old: true
         },
       }).then(({data, error})=>{
-        log.info(data)
-        log.info(error)
         const messages:Array<MessageItemType> = data.fetchMoreMessages
         if(error === undefined && data){
           if(messages.length > 0){
@@ -117,7 +111,6 @@ export const ChatContextProvider:React.FC = ({children}) => {
   }, [initialLoading, messages])
 
   const addToUnsend = useCallback(async (message: string) => {
-    log.info(activeUser)
     const unsendMessage:MessageItemType = {
       messageId: `unsent-${Math.random() * 100}`,
       text: message,
@@ -138,26 +131,21 @@ export const ChatContextProvider:React.FC = ({children}) => {
   }, [activeUser, channelId])
 
   const sendMessage = useCallback(() => {
-    log.info(activeUser)
-    try{
-      setLoading(true)
-      postMessage().then((r)=> {
-        log.info('sent')
-        log.info(r)
+    if(text !== ""){
+      try{
+        setLoading(true)
+        postMessage().then((r)=> {
+          if(messages === null){
+            fetchInitialData().then()
+          }
 
-        if(messages === null){
-          log.info("masuk ga?")
-          fetchInitialData().then()
-        }
-
-      }).catch((error => {
-        log.info('ada error')
-        log.info(error)
-        addToUnsend(text)
-      }))
-    } finally {
-      setLoading(false)
-      setText("")
+        }).catch((e => {
+          addToUnsend(text)
+        }))
+      } finally {
+        setLoading(false)
+        setText("")
+      }
     }
   }, [activeUser, channelId, headMessageId, text])
 
@@ -172,11 +160,8 @@ export const ChatContextProvider:React.FC = ({children}) => {
             userId: activeUser
           }}
         ).then((r)=> {
-          log.info(r)
           setUnsentMessages((prevState => prevState.filter((item)=> item.messageId !== messageItem.messageId)))
-        }).catch((error => {
-          log.info(error)
-        }))
+        })
       } finally {
         setLoading(false)
       }
@@ -197,17 +182,11 @@ export const ChatContextProvider:React.FC = ({children}) => {
       channelId: channelId,
       messageId: headMessageId?.messageId ?? '',
       old: false
-    }).catch(e => {
-      // setError("generic-error")
-    })
+    }).catch()
   }, [channelId, headMessageId])
 
   useEffect(() => {
-    log.info("fetchdata new")
-    log.info(fetchNewError)
     if(fetchNewError === undefined && !fetchNewLoading){
-      log.info(fetchNewData)
-      log.info(fetchNewLoading)
       if(fetchNewData){
         const messages:Array<MessageItemType> = fetchNewData.fetchMoreMessages
         if(messages.length > 0){
@@ -220,31 +199,14 @@ export const ChatContextProvider:React.FC = ({children}) => {
     }
   }, [fetchNewLoading, fetchNewError, fetchNewData]);
 
-  useEffect(() => {
-    log.info("messages effect")
-    log.info(headMessageId)
-    log.info(tailMessageId)
-  }, [headMessageId, tailMessageId]);
-
-  useEffect(() => {
-    log.info("messages effect")
-    log.info(messages)
-  }, [messages]);
-
-  // useEffect(() => {
-  //   if(unsentMessages.length > 0){
-  //     setMessages((prevState => [...prevState, ...unsentMessages]))
-  //   }
-  // }, [unsentMessages]);
-
   const [renderLoading, setRenderLoading] = useState<boolean>(false)
 
   useEffect(()=>{
     const timeoutLoading = async () => {
       setRenderLoading(true)
-      await timeout(2000)
+      await timeout(1500)
     }
-    timeoutLoading().then((value => {
+    timeoutLoading().then((() => {
       setRenderLoading(false)
     }))
   }, [activeUser, channelId])
@@ -257,16 +219,6 @@ export const ChatContextProvider:React.FC = ({children}) => {
       return () => clearInterval(interval);
     }
   },[renderLoading, postMessageLoading])
-
-  // useEffect(() => {
-  //   log.info("active user")
-  //   log.info(activeUser)
-  // }, [activeUser]);
-
-  useEffect(() => {
-    log.info("Error")
-    log.info(error)
-  }, [error]);
 
   const [unsentFiltered, setUnsentFiltered] = useState(unsentMessages)
 
@@ -282,7 +234,7 @@ export const ChatContextProvider:React.FC = ({children}) => {
           setUnsentMessages(l)
         });
     } catch (e) {
-      log.info("store failed")
+      log.info("AsyncStorage failed")
     }
   }, [unsentMessages])
 
@@ -292,19 +244,16 @@ export const ChatContextProvider:React.FC = ({children}) => {
         if(value){
           setText(value)
         }
-      })
+      }).catch(e => log.info(e))
     }
     loadText()
   },[activeUser])
 
   useEffect(()=>{
     const saveText = async () => {
-      await AsyncStorage.setItem(`text_editor`, text).then(r => {
-        log.info(r)
-      }).catch(e => log.info(e))
+      await AsyncStorage.setItem(`text_editor`, text).then(() => null).catch(e => log.info(e))
     }
     saveText()
-    log.info(text)
   },[text])
 
   const appContextValue = useMemo(

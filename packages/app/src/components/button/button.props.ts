@@ -32,4 +32,5 @@ export interface ButtonProps extends TouchableOpacityProps {
     | "primary-dark"
     | "secondary"
     | "send"
+    | "send-disabled"
 }
