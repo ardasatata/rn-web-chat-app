@@ -10,6 +10,7 @@ import {ApolloProvider} from '@apollo/client';
 import {subplatform} from "./config";
 import Navigator from "./routes";
 import {client} from "./query";
+import {ChatContextProvider} from "./hooks/ChatContextProvider";
 
 
 export function App(): JSX.Element {
@@ -19,7 +20,9 @@ export function App(): JSX.Element {
   return (
     <View style={styles.root}>
       <ApolloProvider client={client}>
-        <Navigator/>
+        <ChatContextProvider>
+          <Navigator/>
+        </ChatContextProvider>
       </ApolloProvider>
     </View>
   );

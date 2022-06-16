@@ -1,1 +1,1 @@
-export type ErrorsType = "send-failed" | "generic-error"
+export type ErrorsType = "send-failed" | "generic-error" | "initial-error"

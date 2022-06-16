@@ -27,6 +27,7 @@ export type MessageItemType = {
   text: string
   userId: UserType
   datetime: string
+  channelId: string
 }
 
 export default function useChatApp(): chatAppContext {
