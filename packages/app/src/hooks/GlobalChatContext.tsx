@@ -9,7 +9,7 @@ export type GlobalChatContext = {
   error: ErrorsType | null
   sendMessage(): void
   setActiveChannel(channelId: ChannelIdType): void
-  fetchMoreMessage(): void
+  fetchMoreMessage(activeChannel: ChannelIdType, tailMessageId: MessageItemType): void
   activeUser: UserType
   setActiveUser(user: UserType): void
   fetchInitialData(): void
@@ -17,4 +17,6 @@ export type GlobalChatContext = {
   resendUnsent(messageItem: MessageItemType): void
   unsentMessages: Array<MessageItemType>
   activeChannel: ChannelIdType
+  tailMessageId: MessageItemType | null
+  renderLoading: boolean
 }

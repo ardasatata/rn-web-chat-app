@@ -1,6 +1,5 @@
 /* eslint-disable react-native/no-inline-styles */
-import React, {useCallback, useContext, useEffect, useState} from 'react';
-import {useQuery, useMutation, ApolloError} from '@apollo/react-hooks';
+import React, {useContext, useEffect, useState} from 'react';
 import {
   Dimensions,
   FlatList, Image,
@@ -9,53 +8,25 @@ import {
   View,
   KeyboardAvoidingView, Platform
 } from 'react-native';
-import {FETCH_LATEST_MESSAGE, GET_ANIME_LIST, POST_MESSAGE} from "../query";
-import {isDesc, logger} from "../utils"
-import {AnimeSortType} from "../query/type";
-import {color, roundness, spacing} from "../styles";
+import {logger} from "../utils"
+import {color, layout, roundness, spacing} from "../styles";
 import {HStack, VStack} from "../components/view-stack";
 import {Text} from "../components/text/text";
 import {Spinner} from "../components/spinner";
-import {SearchSection} from "../components/search-section";
-import {FilterSection} from "../components/filter-section";
 import {CenterText} from "../components/center-text";
-import {SearchIcon} from "../assets/svgs";
 import {Spacer} from "../components/spacer";
-import {AscDescSort} from "../components/asc-desc-sort";
 import {Button} from "../components/button/button";
 
 import {createDrawerNavigator, DrawerContentScrollView, DrawerItem} from '@react-navigation/drawer';
-import useChatApp, {UserType} from "../hooks/useChatApp";
 import {toReadableDate} from "../utils/date";
 
 import KeyboardStickyView from 'rn-keyboard-sticky-view';
 import {ChatContext} from "../hooks/ChatContextProvider";
+import {ChannelIdType, ChannelIdTypeEnum, UserType} from "../type/chat";
+import {useNavigation, useNavigationContainerRef, useNavigationState} from "@react-navigation/native";
 
 const Drawer = createDrawerNavigator();
 
-const log = logger().child({module: "ChannelDetails"})
-
-const PER_PAGE = 10
-
-function CustomDrawerContent(props) {
-
-  const {
-    setActiveUser,
-  } = useContext(ChatContext)
-
-  const selectActiveUser = (userId: UserType) => {
-    setActiveUser(userId)
-    props.navigation.closeDrawer()
-  }
-
-  return (
-    <DrawerContentScrollView {...props}>
-      <DrawerItem label="Sam" onPress={()=> selectActiveUser("Sam")}  />
-      <DrawerItem label="Russell" onPress={()=> selectActiveUser("Russell")}  />
-      <DrawerItem label="Joyse" onPress={()=> selectActiveUser("Joyse")}  />
-    </DrawerContentScrollView>
-  );
-}
 
 function DrawerNavigator({navigation, route}) {
 
@@ -63,6 +34,35 @@ function DrawerNavigator({navigation, route}) {
     activeChannel,
     activeUser
   } = useContext(ChatContext)
+
+  function CustomDrawerContent(props) {
+
+    const {
+      setActiveUser,
+      setActiveChannel
+    } = useContext(ChatContext)
+
+    const selectActiveUser = (userId: UserType) => {
+      setActiveUser(userId)
+      props.navigation.closeDrawer()
+    }
+
+    const selectActiveChannel = (channelId: ChannelIdType) => {
+      setActiveChannel(channelId)
+      props.navigation.closeDrawer()
+    }
+
+    return (
+      <DrawerContentScrollView {...props}>
+        <DrawerItem label="Sam" onPress={()=> selectActiveUser("Sam")}  />
+        <DrawerItem label="Russell" onPress={()=> selectActiveUser("Russell")}  />
+        <DrawerItem label="Joyse" onPress={()=> selectActiveUser("Joyse")}  />
+        <DrawerItem label="General" onPress={()=> selectActiveChannel(ChannelIdTypeEnum.GENERAL)}  />
+        <DrawerItem label="Technology" onPress={()=> setActiveChannel(ChannelIdTypeEnum.TECHNOLOGY)}  />
+        <DrawerItem label="LGTM" onPress={()=> setActiveChannel(ChannelIdTypeEnum.LGTM)}  />
+      </DrawerContentScrollView>
+    );
+  }
 
   return (
     <Drawer.Navigator
@@ -90,30 +90,22 @@ const ChannelDetails = ({navigation}) => {
     setActiveChannel,
     resendUnsent,
     unsentMessages,
-    activeChannel
+    activeChannel,
+    tailMessageId,
+    renderLoading
   } = useContext(ChatContext)
 
-  useEffect(()=>{
-    fetchInitialData()
-  },[])
-
-  if (loading) {
+  if (loading || renderLoading) {
     return (
       <Spinner/>
     );
   }
 
-  if (error) {
-    return (
-      <CenterText text={"Something wrong :("}/>
-    );
-  }
-
-  const [unsentFiltered, setUnsentFiltered] = useState(unsentMessages)
-
-  useEffect(()=>{
-    setUnsentFiltered((unsentMessages.filter((value => value.userId === activeUser))))
-  }, [unsentMessages, activeUser])
+  // if (error) {
+  //   return (
+  //     <CenterText text={"Something wrong :("}/>
+  //   );
+  // }
 
   return (
     <KeyboardAvoidingView
@@ -124,10 +116,11 @@ const ChannelDetails = ({navigation}) => {
         {messages ? (
           messages.length !== 0 ? (
             <FlatList
+              style={[layout.heightFull]}
               inverted
-              onEndReached={()=> fetchMoreMessage()}
+              onEndReached={()=> fetchMoreMessage(activeChannel, tailMessageId)}
               contentContainerStyle={{}}
-              data={[...unsentFiltered,...messages]}
+              data={[...unsentMessages, ...messages]}
               // keyExtractor={(item) => String(item.messageId)}
               renderItem={({item}) => {
                 if(item.channelId === undefined || item.channelId === activeChannel){

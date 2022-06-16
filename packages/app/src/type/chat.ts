@@ -7,3 +7,9 @@ export type MessageItemType = {
   userId: UserType
   datetime: string
 }
+
+export enum ChannelIdTypeEnum {
+  GENERAL = "1",
+  TECHNOLOGY = "2",
+  LGTM = "3",
+}

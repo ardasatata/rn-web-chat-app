@@ -3,12 +3,33 @@ import {GlobalChatContext} from "./GlobalChatContext";
 import {useCallback, useEffect, useMemo, useState} from "react";
 import {useLazyQuery, useMutation, useQuery} from "@apollo/react-hooks";
 import {FETCH_LATEST_MESSAGE, FETCH_MORE_MESSAGE, POST_MESSAGE} from "../query";
-import {isDesc, logger} from "../utils";
-// import AsyncStorage from "@react-native-async-storage/async-storage";
+import {logger} from "../utils";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {ErrorsType} from "../Errors";
 import {ChannelIdType, MessageItemType, UserType} from "./useChatApp";
 
-const log = logger().child({module: "AnimeList"})
+const log = logger().child({module: "ChatContextProvider"})
+
+function timeout(delay: number) {
+  return new Promise( res => setTimeout(res, delay) );
+}
+
+const defaultUnsentMessages = [
+  {
+    messageId: `unsent-${Math.floor(Math.random() * 100)}`,
+    text: "unsent-1",
+    userId: "Sam",
+    datetime: "",
+    channelId: "1"
+  },
+  {
+    messageId: `unsent-${Math.floor(Math.random() * 100)}`,
+    text: "unsent-2",
+    userId: "Sam",
+    datetime: "",
+    channelId: "1"
+  }
+]
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -17,17 +38,9 @@ export const ChatContext = createContext<GlobalChatContext>(null);
 export const ChatContextProvider:React.FC = ({children}) => {
 
   const [messages, setMessages] = useState<Array<MessageItemType> | null>(null)
-  const [unsentMessages, setUnsentMessages] = useState<Array<MessageItemType>>([
-    {
-      messageId: `unsent-${Math.floor(Math.random() * 100)}`,
-      text: "unsent-1",
-      userId: "Sam",
-      datetime: "",
-      channelId: "1"
-    }
-  ])
+  const [unsentMessages, setUnsentMessages] = useState<Array<MessageItemType>>([])
 
-  const [text, setText] = useState<string>('your');
+  const [text, setText] = useState<string>('');
 
   const [channelId, setChannelId] = useState<ChannelIdType>("1");
   const [activeUser, setActiveUser] = useState<UserType>("Sam");
@@ -47,11 +60,16 @@ export const ChatContextProvider:React.FC = ({children}) => {
       setHeadMessageId(messages[0])
       setTailMessageId(messages[messages.length - 1])
       setMessages(messages);
+      getUnsentMessagesFromStorage()
     },
     onError: () => {
       setError("initial-error")
     }
   });
+
+  useEffect(()=>{
+    fetchInitialData()
+  },[channelId])
 
   const [postMessage, {
     loading: postMessageLoading, error: postMessageError, data: postMessageData
@@ -68,40 +86,42 @@ export const ChatContextProvider:React.FC = ({children}) => {
   });
 
   const {loading: fetchNewLoading, error: fetchNewError, data: fetchNewData, refetch: refetchNewData} = useQuery(FETCH_MORE_MESSAGE, {
-    variables: {
-      channelId: channelId,
-      messageId: '',
-      old: false
-    },
+    // variables: {
+    //   channelId: channelId,
+    //   messageId: '',
+    //   old: false
+    // },
     fetchPolicy: 'network-only',
     skip: !headMessageId
   });
 
-  const fetchMoreMessage = useCallback(() => {
-    queryMoreMessage({
-      variables: {
-        channelId: channelId,
-        messageId: tailMessageId?.messageId ?? '',
-        old: true
-      },
-    }).then(({data, error})=>{
-      log.info(data)
-      log.info(error)
-      const messages:Array<MessageItemType> = data.fetchMoreMessages
-      if(error === undefined && data){
-        if(messages.length > 0){
-          setTailMessageId(messages[messages.length - 1])
+  const fetchMoreMessage = useCallback((channelId, tailMessageId) => {
+    if(!initialLoading){
+      queryMoreMessage({
+        variables: {
+          channelId: channelId,
+          messageId: tailMessageId?.messageId ?? '',
+          old: true
+        },
+      }).then(({data, error})=>{
+        log.info(data)
+        log.info(error)
+        const messages:Array<MessageItemType> = data.fetchMoreMessages
+        if(error === undefined && data){
+          if(messages.length > 0){
+            setTailMessageId(messages[messages.length - 1])
+          }
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          setMessages((prevState => [...prevState, ...messages]));
         }
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        setMessages((prevState => [...prevState, ...messages]));
-      }
-    }).catch(() => {
-      setError("generic-error")
-    })
-  }, [channelId, tailMessageId, messages])
+      }).catch(() => {
+        setError("generic-error")
+      })
+    }
+  }, [initialLoading, messages])
 
-  const addToUnsend = useCallback((message: string) => {
+  const addToUnsend = useCallback(async (message: string) => {
     log.info(activeUser)
     const unsendMessage:MessageItemType = {
       messageId: `unsent-${Math.random() * 100}`,
@@ -112,7 +132,14 @@ export const ChatContextProvider:React.FC = ({children}) => {
     }
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    setUnsentMessages((prevState)=> [...prevState, unsendMessage])
+    setUnsentMessages((prevState)=> [unsendMessage, ...prevState])
+
+    await AsyncStorage.getItem('unsent_list')
+      .then((list) => {
+        const l:Array<MessageItemType> = list ? JSON.parse(list) : defaultUnsentMessages;
+        l.unshift(unsendMessage as MessageItemType);
+        AsyncStorage.setItem('unsent_list', JSON.stringify(l));
+      });
   }, [activeUser, channelId])
 
   const sendMessage = useCallback(() => {
@@ -122,6 +149,12 @@ export const ChatContextProvider:React.FC = ({children}) => {
       postMessage().then((r)=> {
         log.info('sent')
         log.info(r)
+
+        if(messages === null){
+          log.info("masuk ga?")
+          fetchInitialData().then()
+        }
+
       }).catch((error => {
         log.info('ada error')
         log.info(error)
@@ -134,27 +167,34 @@ export const ChatContextProvider:React.FC = ({children}) => {
   }, [activeUser, channelId, headMessageId, text])
 
   const resendUnsent = useCallback((messageItem: MessageItemType) => {
-    try{
-      setLoading(true)
-      postMessage({
-        variables:{
-          channelId: channelId,
-          text: messageItem.text,
-          userId: activeUser
-        }}
-      ).then((r)=> {
-        log.info(r)
-        setUnsentMessages((prevState => prevState.filter((item)=> item.messageId !== messageItem.messageId)))
-      }).catch((error => {
-        log.info(error)
-      }))
-    } finally {
-      setLoading(false)
+    if(!postMessageLoading){
+      try{
+        setLoading(true)
+        postMessage({
+          variables:{
+            channelId: channelId,
+            text: messageItem.text,
+            userId: activeUser
+          }}
+        ).then((r)=> {
+          log.info(r)
+          setUnsentMessages((prevState => prevState.filter((item)=> item.messageId !== messageItem.messageId)))
+        }).catch((error => {
+          log.info(error)
+        }))
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [activeUser, channelId])
+  }, [activeUser, channelId, postMessageLoading])
 
   const setActiveChannel = useCallback((userId: ChannelIdType) => {
     setChannelId(userId)
+    setMessages(null)
+    setError(null)
+    setText("")
+    setTailMessageId(null)
+    setHeadMessageId(null)
   }, [channelId])
 
   const fetchNewMessage = useCallback(() => {
@@ -202,22 +242,75 @@ export const ChatContextProvider:React.FC = ({children}) => {
   //   }
   // }, [unsentMessages]);
 
-  useEffect(()=>{
-    const interval = setInterval(() => {
-      fetchNewMessage()
-    }, 1000);
-    return () => clearInterval(interval);
-  })
+  const [renderLoading, setRenderLoading] = useState<boolean>(false)
 
-  useEffect(() => {
-    log.info("active user")
-    log.info(activeUser)
-  }, [activeUser]);
+  useEffect(()=>{
+    const timeoutLoading = async () => {
+      setRenderLoading(true)
+      await timeout(2000)
+    }
+    timeoutLoading().then((value => {
+      setRenderLoading(false)
+    }))
+  }, [activeUser, channelId])
+
+  useEffect(()=>{
+    if(!renderLoading && !postMessageLoading){
+      const interval = setInterval(() => {
+        fetchNewMessage()
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  },[renderLoading, postMessageLoading])
+
+  // useEffect(() => {
+  //   log.info("active user")
+  //   log.info(activeUser)
+  // }, [activeUser]);
 
   useEffect(() => {
     log.info("Error")
     log.info(error)
   }, [error]);
+
+  const [unsentFiltered, setUnsentFiltered] = useState(unsentMessages)
+
+  useEffect(()=>{
+    setUnsentFiltered((unsentMessages.filter((value => value.userId === activeUser))))
+  }, [unsentMessages, activeUser])
+
+  const getUnsentMessagesFromStorage = useCallback(async () => {
+    try {
+      await AsyncStorage.getItem('unsent_list')
+        .then((list) => {
+          const l = list ? JSON.parse(list) : defaultUnsentMessages;
+          setUnsentMessages(l)
+        });
+    } catch (e) {
+      log.info("store failed")
+    }
+  }, [unsentMessages])
+
+  useEffect(()=>{
+    const loadText = async () => {
+      await AsyncStorage.getItem(`text_editor`).then((value) => {
+        if(value){
+          setText(value)
+        }
+      })
+    }
+    loadText()
+  },[activeUser])
+
+  useEffect(()=>{
+    const saveText = async () => {
+      await AsyncStorage.setItem(`text_editor`, text).then(r => {
+        log.info(r)
+      }).catch(e => log.info(e))
+    }
+    saveText()
+    log.info(text)
+  },[text])
 
   const appContextValue = useMemo(
     () => ({
@@ -234,8 +327,10 @@ export const ChatContextProvider:React.FC = ({children}) => {
       fetchInitialData,
       postMessageLoading,
       resendUnsent,
-      unsentMessages,
-      activeChannel: channelId
+      unsentMessages: unsentFiltered,
+      activeChannel: channelId,
+      tailMessageId,
+      renderLoading
     }),
     [
       messages,
@@ -251,8 +346,10 @@ export const ChatContextProvider:React.FC = ({children}) => {
       fetchInitialData,
       postMessageLoading,
       resendUnsent,
-      unsentMessages,
-      channelId
+      unsentFiltered,
+      channelId,
+      tailMessageId,
+      renderLoading
     ]
   );
 
