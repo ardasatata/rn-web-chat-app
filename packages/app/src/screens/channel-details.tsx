@@ -1,14 +1,13 @@
 /* eslint-disable react-native/no-inline-styles */
-import React, {useContext, useEffect, useState} from 'react';
+import React, {useContext} from 'react';
 import {
   Dimensions,
-  FlatList, Image,
+  FlatList,
   StyleSheet, TextInput,
   TouchableOpacity,
   View,
-  KeyboardAvoidingView, Platform
+  KeyboardAvoidingView, Platform, Image
 } from 'react-native';
-import {logger} from "../utils"
 import {color, layout, roundness, spacing} from "../styles";
 import {HStack, VStack} from "../components/view-stack";
 import {Text} from "../components/text/text";
@@ -17,77 +16,22 @@ import {CenterText} from "../components/center-text";
 import {Spacer} from "../components/spacer";
 import {Button} from "../components/button/button";
 
-import {createDrawerNavigator, DrawerContentScrollView, DrawerItem} from '@react-navigation/drawer';
 import {toReadableDate} from "../utils/date";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import KeyboardStickyView from 'rn-keyboard-sticky-view';
 import {ChatContext} from "../hooks/ChatContextProvider";
-import {ChannelIdType, ChannelIdTypeEnum, UserType} from "../type/chat";
-import {useNavigation, useNavigationContainerRef, useNavigationState} from "@react-navigation/native";
 
-const Drawer = createDrawerNavigator();
-
-
-function DrawerNavigator({navigation, route}) {
-
-  const {
-    activeChannel,
-    activeUser
-  } = useContext(ChatContext)
-
-  function CustomDrawerContent(props) {
-
-    const {
-      setActiveUser,
-      setActiveChannel
-    } = useContext(ChatContext)
-
-    const selectActiveUser = (userId: UserType) => {
-      setActiveUser(userId)
-      props.navigation.closeDrawer()
-    }
-
-    const selectActiveChannel = (channelId: ChannelIdType) => {
-      setActiveChannel(channelId)
-      props.navigation.closeDrawer()
-    }
-
-    return (
-      <DrawerContentScrollView {...props}>
-        <DrawerItem label="Sam" onPress={()=> selectActiveUser("Sam")}  />
-        <DrawerItem label="Russell" onPress={()=> selectActiveUser("Russell")}  />
-        <DrawerItem label="Joyse" onPress={()=> selectActiveUser("Joyse")}  />
-        <DrawerItem label="General" onPress={()=> selectActiveChannel(ChannelIdTypeEnum.GENERAL)}  />
-        <DrawerItem label="Technology" onPress={()=> setActiveChannel(ChannelIdTypeEnum.TECHNOLOGY)}  />
-        <DrawerItem label="LGTM" onPress={()=> setActiveChannel(ChannelIdTypeEnum.LGTM)}  />
-      </DrawerContentScrollView>
-    );
-  }
-
-  return (
-    <Drawer.Navigator
-      drawerContent={(props) => <CustomDrawerContent {...props} />}>
-      <Drawer.Screen name={`${activeChannel} as ${activeUser}`} component={ChannelDetails} >
-      </Drawer.Screen>
-    </Drawer.Navigator>
-  );
-}
-
-const ChannelDetails = ({navigation}) => {
-
+const ChannelDetails = ({}) => {
   const {
     text,
     messages,
     setText,
-    error,
     sendMessage,
     loading,
     fetchMoreMessage,
     activeUser,
-    setActiveUser,
-    fetchInitialData,
-    postMessageLoading,
-    setActiveChannel,
     resendUnsent,
     unsentMessages,
     activeChannel,
@@ -131,34 +75,50 @@ const ChannelDetails = ({navigation}) => {
                       }
                     }}>
                       <VStack horizontal={spacing.small} vertical={spacing.small}>
-                        <VStack>
-                          <HStack>
-                            { item.userId === activeUser ? <Spacer/> : null }
+                        <HStack style={[layout.widthFull]}>
+                          <VStack style={[layout.widthFull, {flex: 4}]}>
                             <VStack>
-                              { item.userId === activeUser ? null : <Text type={'label-bold'} style={{color: color.dark900}}>{item.userId}</Text> }
+                              <HStack>
+                                { item.userId === activeUser ? <Spacer/> : null }
+                                <VStack bottom={spacing.tiny}>
+                                  { item.userId === activeUser ? null : <Text type={'label-bold'} style={{color: color.dark900}}>{item.userId}</Text> }
+                                </VStack>
+                              </HStack>
+                              <HStack>
+                                { item.userId === activeUser ? <Spacer/> : null }
+                                { item.userId === activeUser ? null :
+                                  <HStack style={{width: spacing['32']}}>
+                                    <Image
+                                      source={{uri: `https://ui-avatars.com/api/?name=${item.userId}&background=0D8ABC&color=fff`}}
+                                      style={{ height: spacing['32'], width: spacing['32'], borderRadius: roundness.full}}
+                                    />
+                                  </HStack>
+                                }
+                                <Spacer width={spacing.small}/>
+                                <VStack horizontal={spacing.small}
+                                        vertical={spacing.small}
+                                        style={{
+                                          backgroundColor: item.datetime !== '' ? color.primary300 : color.secondary500,
+                                          borderRadius: roundness.lg,
+                                          maxWidth: Dimensions.get("window").width * 0.65
+                                        }}>
+                                  <VStack style={{flex: 1}} >
+                                    <Text type={'body'} style={{color: color.dark900}}>{item.text}</Text>
+                                  </VStack>
+                                </VStack>
+                              </HStack>
+                              <HStack>
+                                { item.userId === activeUser ? <Spacer/> : null }
+                                <VStack>
+                                  <Spacer height={spacing.nano} />
+                                  <Text numberOfLines={1} type={'label'} style={{color: color.dark900}}>
+                                    {item.datetime !== '' ? toReadableDate(item.datetime) : ""}
+                                  </Text>
+                                </VStack>
+                              </HStack>
                             </VStack>
-                          </HStack>
-                          <HStack>
-                            { item.userId === activeUser ? <Spacer/> : null }
-                            <VStack horizontal={spacing.small}
-                                    vertical={spacing.small}
-                                    style={{backgroundColor: color.primary300, borderRadius: roundness.lg,
-                                      maxWidth: Dimensions.get("window").width * 0.65}}>
-                              <VStack style={{flex: 1}} >
-                                <Text type={'body'} style={{color: color.dark900}}>{item.text}</Text>
-                              </VStack>
-                            </VStack>
-                          </HStack>
-                          <HStack>
-                            { item.userId === activeUser ? <Spacer/> : null }
-                            <VStack>
-                              <Spacer height={spacing.nano} />
-                              <Text numberOfLines={1} type={'label'} style={{color: color.dark900}}>
-                                {item.datetime !== '' ? toReadableDate(item.datetime) : ""}
-                              </Text>
-                            </VStack>
-                          </HStack>
-                        </VStack>
+                          </VStack>
+                        </HStack>
                       </VStack>
                     </TouchableOpacity>
                   )
@@ -219,4 +179,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
-export default DrawerNavigator;
+
+export default ChannelDetails;

@@ -6,7 +6,7 @@ import {FETCH_LATEST_MESSAGE, FETCH_MORE_MESSAGE, POST_MESSAGE} from "../query";
 import {logger} from "../utils";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {ErrorsType} from "../Errors";
-import {ChannelIdType, MessageItemType, UserType} from "./useChatApp";
+import {MessageItemType, ChannelIdType, UserType} from "../type/chat";
 
 const log = logger().child({module: "ChatContextProvider"})
 
@@ -86,11 +86,6 @@ export const ChatContextProvider:React.FC = ({children}) => {
   });
 
   const {loading: fetchNewLoading, error: fetchNewError, data: fetchNewData, refetch: refetchNewData} = useQuery(FETCH_MORE_MESSAGE, {
-    // variables: {
-    //   channelId: channelId,
-    //   messageId: '',
-    //   old: false
-    // },
     fetchPolicy: 'network-only',
     skip: !headMessageId
   });

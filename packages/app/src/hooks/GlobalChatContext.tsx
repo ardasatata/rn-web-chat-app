@@ -1,5 +1,5 @@
 import {ErrorsType} from "../Errors";
-import {ChannelIdType, MessageItemType, UserType} from "./useChatApp";
+import {ChannelIdType, MessageItemType, UserType} from "../type/chat";
 
 export type GlobalChatContext = {
   messages: Array<MessageItemType> | null
@@ -9,7 +9,7 @@ export type GlobalChatContext = {
   error: ErrorsType | null
   sendMessage(): void
   setActiveChannel(channelId: ChannelIdType): void
-  fetchMoreMessage(activeChannel: ChannelIdType, tailMessageId: MessageItemType): void
+  fetchMoreMessage(activeChannel: ChannelIdType, tailMessageId: MessageItemType | null): void
   activeUser: UserType
   setActiveUser(user: UserType): void
   fetchInitialData(): void
