@@ -48,7 +48,7 @@ const DesktopMenu = () => {
 
   const UserItem = ({userId}:{userId: UserType}) => {
     return(
-      <VStack vertical={spacing.tiny} style={{zIndex: 100}}>
+      <VStack vertical={spacing.tiny} style={{}}>
         <TouchableOpacity
           onPress={()=> setActiveUser(userId)}
           style={{flexDirection: 'row', flex: 1, display: 'flex', alignItems: 'center'}}>
@@ -81,7 +81,7 @@ const DesktopMenu = () => {
   }
 
   return(
-    <VStack vertical={spacing.medium} horizontal={spacing.medium} style={{position: 'absolute', backgroundColor: 'rgba(1,1,1,0.1)' }}>
+    <VStack vertical={spacing.medium} horizontal={spacing.medium} style={{position: 'absolute', backgroundColor: 'rgba(1,1,1,0.1)', zIndex: 100 }}>
       <Text type={'label'} style={{color: color.dark900, fontSize: spacing.extraMedium}}>{"User List"}</Text>
       <VStack>
         { userList.map((item)=> {
