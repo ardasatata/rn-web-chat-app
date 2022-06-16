@@ -1,6 +1,6 @@
 # React Native & Web Monorepo
 
-React-native + web monorepo with graph ql api from AniList
+React-native + web monorepo with graph ql api for chatting apps
 
 # Screenshoot & Demo
 
