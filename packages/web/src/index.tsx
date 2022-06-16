@@ -11,6 +11,7 @@ import {ApolloProvider} from "@apollo/client";
 import { ReactComponent as AppleSVG } from '@rn-web-chat-app/app/src/assets/svgs/appleIcon.svg';
 import {client} from "@rn-web-chat-app/app/src/query";
 import Navigator from "./routes";
+import {ChatContextProvider} from "@rn-web-chat-app/app/src/hooks/ChatContextProvider";
 
 // ReactDOM.render(
 //   <React.StrictMode>
@@ -25,14 +26,12 @@ import Navigator from "./routes";
 // reportWebVitals();
 
 export function App(): JSX.Element {
-  const platformValue = subplatform
-    ? `${Platform.OS} (${subplatform})`
-    : Platform.OS;
   return (
     <View style={{backgroundColor: 'red', height: '100vh'}}>
       <ApolloProvider client={client}>
-        <Navigator/>
-        {/*<AppleSVG />*/}
+        <ChatContextProvider>
+          <Navigator/>
+        </ChatContextProvider>
       </ApolloProvider>
     </View>
   );

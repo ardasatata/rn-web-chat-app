@@ -124,7 +124,7 @@ export const ChatContextProvider:React.FC = ({children}) => {
 
     await AsyncStorage.getItem('unsent_list')
       .then((list) => {
-        const l:Array<MessageItemType> = list ? JSON.parse(list) : defaultUnsentMessages;
+        const l:Array<MessageItemType> = list ? JSON.parse(list) : [];
         l.unshift(unsendMessage as MessageItemType);
         AsyncStorage.setItem('unsent_list', JSON.stringify(l));
       });
@@ -140,7 +140,7 @@ export const ChatContextProvider:React.FC = ({children}) => {
           }
 
         }).catch((e => {
-          addToUnsend(text)
+          addToUnsend(text).then()
         }))
       } finally {
         setLoading(false)
@@ -230,7 +230,7 @@ export const ChatContextProvider:React.FC = ({children}) => {
     try {
       await AsyncStorage.getItem('unsent_list')
         .then((list) => {
-          const l = list ? JSON.parse(list) : defaultUnsentMessages;
+          const l = list ? JSON.parse(list) : [];
           setUnsentMessages(l)
         });
     } catch (e) {
@@ -243,6 +243,8 @@ export const ChatContextProvider:React.FC = ({children}) => {
       await AsyncStorage.getItem(`text_editor`).then((value) => {
         if(value){
           setText(value)
+        }else{
+          setText("")
         }
       }).catch(e => log.info(e))
     }
